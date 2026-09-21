@@ -76,7 +76,7 @@ export class GameController {
     if (currentGrid.isWalkable(targetPosition)) {
       currentPlayer.setPosition(targetPosition);
       for (const player of lobby.getPlayers()) {
-        player.emit('player:moved', {
+        player.emit('game:position', {
           playerId,
           position: targetPosition,
         });
