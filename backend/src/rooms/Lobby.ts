@@ -14,9 +14,8 @@ const DEFAULT_MAX_PLAYERS = 4;
 /**
  * Lobby : salle d'attente pour une partie.
  *
- * Un lobby accueille 2 à 4 joueurs avant le démarrage. Le lancement
- * automatique de la partie (quand le minimum de joueurs est atteint et que
- * tous sont prêts) sera branché lors de la Phase 2.
+ * Un lobby accueille 2 à 4 joueurs avant le démarrage. La partie peut
+ * démarrer quand le minimum de joueurs est atteint et que tous sont prêts.
  */
 export class Lobby {
   readonly id: string;
@@ -24,6 +23,7 @@ export class Lobby {
   readonly minPlayers: number;
   readonly maxPlayers: number;
   private readonly connections = new Map<PlayerId, PlayerConnection>();
+  private readonly readyPlayers = new Set<PlayerId>();
   private started = false;
 
   constructor(config: LobbyConfig = {}) {
@@ -64,7 +64,29 @@ export class Lobby {
 
   /** Retire un joueur du lobby. */
   remove(playerId: PlayerId): boolean {
-    return this.connections.delete(playerId);
+    const removed = this.connections.delete(playerId);
+    if (removed) {
+      this.readyPlayers.delete(playerId);
+    }
+    return removed;
+  }
+
+  /** Modifie l'état prêt d'un joueur présent dans le lobby. */
+  setPlayerReady(playerId: PlayerId, ready: boolean): void {
+    if (!this.connections.has(playerId)) {
+      throw new Error('Le joueur n’est pas présent dans ce lobby.');
+    }
+
+    if (ready) {
+      this.readyPlayers.add(playerId);
+    } else {
+      this.readyPlayers.delete(playerId);
+    }
+  }
+
+  /** Indique si un joueur présent est prêt. */
+  isPlayerReady(playerId: PlayerId): boolean {
+    return this.readyPlayers.has(playerId);
   }
 
   getPlayers(): PlayerConnection[] {
@@ -75,8 +97,12 @@ export class Lobby {
     return this.getPlayers().map((player) => player.name);
   }
 
-  /** Vrai si le nombre minimal de joueurs est atteint (Phase 2 : + ready). */
+  /** Vrai si le minimum de joueurs est atteint et que tous sont prêts. */
   canStart(): boolean {
-    return !this.started && this.connections.size >= this.minPlayers;
+    return (
+      !this.started &&
+      this.connections.size >= this.minPlayers &&
+      this.readyPlayers.size === this.connections.size
+    );
   }
 }
