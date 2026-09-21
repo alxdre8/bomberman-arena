@@ -1,7 +1,24 @@
-import { Application, Graphics, Text, TextStyle } from 'pixi.js'
+import { Application, Assets, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js'
+import soldierIdlePath from './assets/sprites/Soldier_Idle.png'
+import soldierWalkPath from './assets/sprites/Soldier_Walk.png'
+
+// ── Spritesheet helpers ─────────────────────────────────────────────────────
+
+const FRAME_SIZE = 100 // chaque frame = 100×100 px
+
+/** Découpe un spritesheet horizontal en frames de 100×100. */
+function splitSpritesheet(baseTexture: Texture, frameCount: number): Texture[] {
+  const frames: Texture[] = []
+  for (let i = 0; i < frameCount; i++) {
+    const frame = new Rectangle(i * FRAME_SIZE, 0, FRAME_SIZE, FRAME_SIZE)
+    frames.push(new Texture({ source: baseTexture.source, frame }))
+  }
+  return frames
+}
 
 async function main(): Promise<void> {
-  // Crée l'application PixiJS
+  // ── PixiJS ──────────────────────────────────────────────────────────────
+
   const app = new Application()
 
   await app.init({
@@ -13,12 +30,26 @@ async function main(): Promise<void> {
     autoDensity: true
   })
 
-  // Ajoute le canvas au DOM
   document.getElementById('app')!.appendChild(app.canvas)
 
-  // --------------------------------------------------
-  // GRILLE
-  // --------------------------------------------------
+  // ── Chargement des spritesheets ─────────────────────────────────────────
+
+  let idleFrames: Texture[] = []
+  let walkFrames: Texture[] = []
+  let useSpritesheet = false
+
+  try {
+    const idleTexture = await Assets.load(soldierIdlePath) as Texture
+    const walkTexture = await Assets.load(soldierWalkPath) as Texture
+
+    idleFrames = splitSpritesheet(idleTexture, 6)
+    walkFrames = splitSpritesheet(walkTexture, 8)
+    useSpritesheet = idleFrames.length > 0 && walkFrames.length > 0
+  } catch (err) {
+    console.warn('Impossible de charger les sprites, fallback cercle:', err)
+  }
+
+  // ── Grille ──────────────────────────────────────────────────────────────
 
   const gridSize = 15
   const cellSize =
@@ -53,30 +84,86 @@ async function main(): Promise<void> {
 
   app.stage.addChild(grid)
 
-  // --------------------------------------------------
-  // JOUEUR
-  // --------------------------------------------------
+  // ── Joueur (sprite animé ou fallback cercle) ────────────────────────────
 
-  // Position du joueur dans la grille
   let playerRow = 0
   let playerCol = 0
 
+  // État d'animation
+  let currentFrames = idleFrames
+  let currentFrameIndex = 0
+  const animSpeed = 0.12 // frames par tick (≈ 7 fps à 60 fps)
+  let animAccumulator = 0
+  let isMoving = false
+
   // Création du personnage
-  const player = new Graphics()
+  let player: Sprite | Graphics
+  const spriteScale = (cellSize * 4.7) / FRAME_SIZE
 
-  player
-    .circle(0, 0, cellSize * 0.35)
-    .fill(0xe94560)
+  if (useSpritesheet) {
+    const s = new Sprite(idleFrames[0])
+    s.anchor.set(0.5, 0.5)
+    s.scale.set(spriteScale)
+    player = s
+  } else {
+    const g = new Graphics()
+    g.circle(0, 0, cellSize * 0.35).fill(0xe94560)
+    player = g
+  }
 
-  // Position initiale du personnage
+  // Position initiale
   player.x = offsetX + playerCol * cellSize + cellSize / 2
   player.y = offsetY + playerRow * cellSize + cellSize / 2
 
   app.stage.addChild(player)
 
-  // --------------------------------------------------
-  // DÉPLACEMENT
-  // --------------------------------------------------
+  // ── Animation loop ──────────────────────────────────────────────────────
+
+  let idleTimer = 0
+
+  if (useSpritesheet) {
+    app.ticker.add(() => {
+      animAccumulator += 1
+
+      // Quand on bouge : parcourir les frames walk rapidement
+      if (isMoving) {
+        if (animAccumulator >= 1 / animSpeed) {
+          animAccumulator = 0
+          currentFrameIndex = (currentFrameIndex + 1) % currentFrames.length
+          ;(player as Sprite).texture = currentFrames[currentFrameIndex]
+        }
+      } else {
+        // Idle : animation plus lente
+        idleTimer += 1
+        if (idleTimer >= 10) {
+          idleTimer = 0
+          currentFrameIndex = (currentFrameIndex + 1) % currentFrames.length
+          ;(player as Sprite).texture = currentFrames[currentFrameIndex]
+        }
+      }
+    })
+  }
+
+  // Retour à idle après un court délai sans mouvement
+  let moveTimeout: ReturnType<typeof setTimeout> | null = null
+
+  function setMoving(): void {
+    if (!isMoving) {
+      isMoving = true
+      currentFrames = walkFrames
+      currentFrameIndex = 0
+      animAccumulator = 0
+    }
+    if (moveTimeout) clearTimeout(moveTimeout)
+    moveTimeout = setTimeout(() => {
+      isMoving = false
+      currentFrames = idleFrames
+      currentFrameIndex = 0
+      animAccumulator = 0
+    }, 200)
+  }
+
+  // ── Déplacement ─────────────────────────────────────────────────────────
 
   function movePlayer(rowDirection: number, colDirection: number): void {
     const newRow = playerRow + rowDirection
@@ -97,6 +184,15 @@ async function main(): Promise<void> {
       return
     }
 
+    // Flip horizontal selon la direction (sprite uniquement)
+    if (useSpritesheet) {
+      if (colDirection < 0) {
+        player.scale.x = -Math.abs(spriteScale)
+      } else if (colDirection > 0) {
+        player.scale.x = Math.abs(spriteScale)
+      }
+    }
+
     // Mise à jour de la position logique
     playerRow = newRow
     playerCol = newCol
@@ -104,12 +200,16 @@ async function main(): Promise<void> {
     // Mise à jour de la position graphique
     player.x = offsetX + playerCol * cellSize + cellSize / 2
     player.y = offsetY + playerRow * cellSize + cellSize / 2
+
+    // Active l'animation de marche
+    setMoving()
   }
 
   // Écoute du clavier
   window.addEventListener('keydown', (event) => {
     switch (event.key.toLowerCase()) {
       case 'w':
+      case 'z':
         movePlayer(-1, 0)
         break
 
@@ -118,6 +218,7 @@ async function main(): Promise<void> {
         break
 
       case 'a':
+      case 'q':
         movePlayer(0, -1)
         break
 
@@ -127,9 +228,7 @@ async function main(): Promise<void> {
     }
   })
 
-  // --------------------------------------------------
-  // TITRE
-  // --------------------------------------------------
+  // ── Titre ───────────────────────────────────────────────────────────────
 
   const style = new TextStyle({
     fontFamily: 'Arial',
@@ -153,13 +252,11 @@ async function main(): Promise<void> {
 
   app.stage.addChild(title)
 
-  // --------------------------------------------------
-  // REDIMENSIONNEMENT
-  // --------------------------------------------------
+  // ── Redimensionnement ───────────────────────────────────────────────────
 
   window.addEventListener('resize', () => {
     app.renderer.resize(window.innerWidth, window.innerHeight)
   })
 }
 
-main().catch(console.error);
+main().catch(console.error)
