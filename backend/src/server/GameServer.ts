@@ -1,19 +1,21 @@
 import { createServer, type Server as HttpServer } from 'node:http';
 import { Server } from 'socket.io';
 import type { AppConfig } from '../config.js';
-import type { ClientToServerEvents, ServerToClientEvents } from '../protocol/types.ts';
+import type { ClientToServerEvents, ServerToClientEvents } from '../protocol/types.js';
+import { RoomManager } from '../rooms/RoomManager.js';
 import { GameController } from './GameController.js';
 
 /**
  * Serveur de jeu : HTTP + Socket.IO.
  *
  * La classe assemble l'infrastructure (transport) et délègue toute la logique
- * au `GameController` / moteur. Elle peut être démarrée et
+ * au `GameController` / `RoomManager` / moteur. Elle peut être démarrée et
  * arrêtée de façon programmatique (tests d'intégration).
  */
 export class GameServer {
   private readonly httpServer: HttpServer;
   private readonly io: Server<ClientToServerEvents, ServerToClientEvents>;
+  private readonly rooms: RoomManager;
   private readonly controller: GameController;
   private connectionCount = 0;
 
@@ -28,7 +30,8 @@ export class GameServer {
       { cors: { origin: config.clientOrigin } },
     );
 
-    this.controller = new GameController();
+    this.rooms = new RoomManager();
+    this.controller = new GameController(this.rooms);
 
     this.io.on('connection', (socket) => {
       this.connectionCount += 1;
