@@ -1,4 +1,4 @@
-import type { JoinRoomResult, MovePayload } from '../protocol/types.js';
+import type { BombPlantedPayload, JoinRoomResult, MovePayload } from '../protocol/types.js';
 import { Lobby } from '../rooms/Lobby.js';
 import { RoomManager } from '../rooms/RoomManager.js';
 import { PlayerConnection, type ClientSocket } from '../rooms/PlayerConnection.js';
@@ -68,8 +68,27 @@ export class GameController {
   }
 
   private handlePlantBomb(playerId: string): void {
-    void playerId;
-    // TODO Phase 2 : poser la bombe via le moteur et diffuser `bomb:planted`.
+    const lobby = this.rooms.getLobbyOfPlayer(playerId);
+    if (!lobby || !lobby.game) {
+      return;
+    }
+
+    const bomb = lobby.game.plantBomb(playerId);
+    if (!bomb) {
+      return;
+    }
+
+    const payload: BombPlantedPayload = {
+      bombId: bomb.id,
+      ownerId: bomb.ownerId,
+      position: bomb.position,
+      fuseMs: bomb.fuseMs,
+      range: bomb.range,
+    };
+
+    for (const player of lobby.getPlayers()) {
+      player.emit('bomb:planted', payload);
+    }
   }
 
   private handleReady(playerId: string): void {
