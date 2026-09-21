@@ -25,6 +25,7 @@
     "electron@44.3.0": true
   },
   "dependencies": {
-    "pixi.js": "^8.20.1"
+    "pixi.js": "^8.20.1",
+    "socket.io-client": "^4.8.3"
   }
 }
