@@ -115,6 +115,7 @@ export interface ServerToClientEvents {
   'bomb:planted': (payload: BombPlantedPayload) => void;
   'explosion:occurred': (payload: ExplosionOccurredPayload) => void;
   'player:dead': (payload: PlayerDeadPayload) => void;
+  'player:moved': (payload: PositionUpdatedPayload) => void;
   'game:end': (payload: GameEndPayload) => void;
   error: (payload: ErrorPayload) => void;
 }
