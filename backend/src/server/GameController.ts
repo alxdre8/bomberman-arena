@@ -1,7 +1,9 @@
-import type { JoinRoomResult, MovePayload } from '../protocol/types.js';
+
+import type { JoinRoomResult, MovePayload, ServerToClientEvents, BombPlantedPayload } from '../protocol/types.js';
 import { Lobby } from '../rooms/Lobby.js';
 import { RoomManager } from '../rooms/RoomManager.js';
 import { PlayerConnection, type ClientSocket } from '../rooms/PlayerConnection.js';
+import { GameStatus } from '../engine/types.js';
 
 /**
  * Pont entre la couche transport (Socket.IO) et le domaine (lobbies, moteur).
@@ -59,15 +61,50 @@ export class GameController {
   }
 
   private handleMove(playerId: string, payload: MovePayload): void {
-    void playerId;
-    void payload;
-    // TODO Phase 2 : récupérer la partie du joueur, valider le déplacement sur
-    // la grille (moteur) puis diffuser `game:position` aux joueurs du lobby.
+    const lobby = this.rooms.getLobbyOfPlayer(playerId);
+    if (!lobby) return;
+
+    const currentGame = lobby.getGame();
+    if (!currentGame || currentGame.status !== GameStatus.Running) return;
+
+    const currentPlayer = currentGame.getPlayer(playerId);
+    if (!currentPlayer || !currentPlayer.isAlive()) return;
+
+    const currentGrid    = currentGame.gridView;
+    const targetPosition = currentPlayer.candidatePosition(payload.direction);
+    if (currentGrid.isWalkable(targetPosition)) {
+      currentPlayer.setPosition(targetPosition);
+      for (const player of lobby.getPlayers()) {
+        player.emit('game:position', {
+          playerId,
+          position: targetPosition,
+        });
+      }
+    }
   }
 
   private handlePlantBomb(playerId: string): void {
-    void playerId;
-    // TODO Phase 2 : poser la bombe via le moteur et diffuser `bomb:planted`.
+    const lobby = this.rooms.getLobbyOfPlayer(playerId);
+    if (!lobby || !lobby.game) {
+      return;
+    }
+
+    const bomb = lobby.game.plantBomb(playerId);
+    if (!bomb) {
+      return;
+    }
+
+    const payload: BombPlantedPayload = {
+      bombId: bomb.id,
+      ownerId: bomb.ownerId,
+      position: bomb.position,
+      fuseMs: bomb.fuseMs,
+      range: bomb.range,
+    };
+
+    for (const player of lobby.getPlayers()) {
+      player.emit('bomb:planted', payload);
+    }
   }
 
   private handleReady(playerId: string): void {

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { Game } from '../engine/Game.js';
 import type { PlayerId } from '../engine/types.js';
 import type { PlayerConnection } from './PlayerConnection.js';
 
@@ -25,6 +26,9 @@ export class Lobby {
   readonly maxPlayers: number;
   private readonly connections = new Map<PlayerId, PlayerConnection>();
   private started = false;
+
+  /** Instance du moteur de jeu actif une fois la partie lancée. */
+  game?: Game;
 
   constructor(config: LobbyConfig = {}) {
     this.minPlayers = config.minPlayers ?? DEFAULT_MIN_PLAYERS;
