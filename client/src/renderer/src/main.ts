@@ -1,4 +1,5 @@
 import { Application, Assets, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js'
+import { io } from 'socket.io-client'
 import soldierIdlePath from './assets/sprites/Soldier_Idle.png'
 import soldierWalkPath from './assets/sprites/Soldier_Walk.png'
 
@@ -17,6 +18,17 @@ function splitSpritesheet(baseTexture: Texture, frameCount: number): Texture[] {
 }
 
 async function main(): Promise<void> {
+  const socket = io('http://localhost:3000')
+  let localPlayerId: string | null = null
+
+  socket.on('connect_error', (error) => {
+    console.error('Connexion au serveur de jeu impossible:', error.message)
+  })
+  socket.on('room:joined', ({ playerId }) => {
+    localPlayerId = playerId
+  })
+  socket.emit('room:join', { playerName: 'Player' })
+
   // ── PixiJS ──────────────────────────────────────────────────────────────
 
   const app = new Application()
@@ -60,9 +72,6 @@ async function main(): Promise<void> {
 
   const grid = new Graphics()
 
-  // On garde les murs dans un tableau.
-  // true = mur
-  // false = case libre
   const walls: boolean[][] = []
 
   for (let row = 0; row < gridSize; row++) {
@@ -163,67 +172,45 @@ async function main(): Promise<void> {
     }, 200)
   }
 
-  // ── Déplacement ─────────────────────────────────────────────────────────
-
-  function movePlayer(rowDirection: number, colDirection: number): void {
-    const newRow = playerRow + rowDirection
-    const newCol = playerCol + colDirection
-
-    // Vérifie qu'on reste dans la grille
-    if (
-      newRow < 0 ||
-      newRow >= gridSize ||
-      newCol < 0 ||
-      newCol >= gridSize
-    ) {
+  socket.on('game:position', ({ playerId, position }) => {
+    if (playerId !== localPlayerId) {
       return
     }
 
-    // Vérifie si la nouvelle case est un mur
-    if (walls[newRow][newCol]) {
-      return
+    const previousCol = playerCol
+    playerRow = position.y
+    playerCol = position.x
+
+    if (useSpritesheet && playerCol !== previousCol) {
+      player.scale.x = playerCol < previousCol
+        ? -Math.abs(spriteScale)
+        : Math.abs(spriteScale)
     }
 
-    // Flip horizontal selon la direction (sprite uniquement)
-    if (useSpritesheet) {
-      if (colDirection < 0) {
-        player.scale.x = -Math.abs(spriteScale)
-      } else if (colDirection > 0) {
-        player.scale.x = Math.abs(spriteScale)
-      }
-    }
-
-    // Mise à jour de la position logique
-    playerRow = newRow
-    playerCol = newCol
-
-    // Mise à jour de la position graphique
     player.x = offsetX + playerCol * cellSize + cellSize / 2
     player.y = offsetY + playerRow * cellSize + cellSize / 2
-
-    // Active l'animation de marche
     setMoving()
-  }
+  })
 
   // Écoute du clavier
   window.addEventListener('keydown', (event) => {
     switch (event.key.toLowerCase()) {
       case 'w':
       case 'z':
-        movePlayer(-1, 0)
+        socket.emit('player:move', { direction: 'up' })
         break
 
       case 's':
-        movePlayer(1, 0)
+        socket.emit('player:move', { direction: 'down' })
         break
 
       case 'a':
       case 'q':
-        movePlayer(0, -1)
+        socket.emit('player:move', { direction: 'left' })
         break
 
       case 'd':
-        movePlayer(0, 1)
+        socket.emit('player:move', { direction: 'right' })
         break
     }
   })
