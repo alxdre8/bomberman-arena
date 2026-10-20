@@ -10,7 +10,7 @@ import { RoomManager } from '../rooms/RoomManager.js';
 import { PlayerConnection, type ClientSocket } from '../rooms/PlayerConnection.js';
 import { Game } from '../engine/Game.js';
 import { Player } from '../engine/Player.js';
-import { GameStatus } from '../engine/types.js';
+import { GameStatus, TileKind } from '../engine/types.js';
 
 /**
  * Pont entre la couche transport (Socket.IO) et le domaine (lobbies, moteur).
@@ -126,10 +126,14 @@ export class GameController {
           y: index === 0 ? 0 : 14,
         }),
     );
-    const game = new Game({
-      grid: { width: 15, height: 15 },
-      players,
-    });
+    const game = new Game({ grid: { width: 15, height: 15 }, players });
+    for (let y = 0; y < game.gridView.height; y += 1) {
+      for (let x = 0; x < game.gridView.width; x += 1) {
+        if (y % 2 === 1 && x % 2 === 1) {
+          game.gridView.setCell({ x, y }, TileKind.IndestructibleWall);
+        }
+      }
+    }
     game.start();
     lobby.start(game);
 
