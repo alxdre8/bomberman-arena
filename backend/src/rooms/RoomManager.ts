@@ -16,8 +16,7 @@ export class RoomManager {
 
   /** Fait rejoindre un lobby au joueur, en le créant si nécessaire. */
   join(connection: PlayerConnection): Lobby {
-    const lobby =
-      this.findOpenLobby() ?? this.createLobby();
+    const lobby = this.findOpenLobby() ?? this.createLobby();
 
     if (!lobby.add(connection)) {
       throw new Error('Impossible d’ajouter le joueur au lobby.');
