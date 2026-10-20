@@ -26,6 +26,7 @@ async function main(): Promise<void> {
   })
   socket.on('room:joined', ({ playerId }) => {
     localPlayerId = playerId
+    socket.emit('player:ready')
   })
   socket.emit('room:join', { playerName: 'Player' })
 
