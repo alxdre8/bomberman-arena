@@ -79,4 +79,8 @@ export class Lobby {
   canStart(): boolean {
     return !this.started && this.connections.size >= this.minPlayers;
   }
+
+  getGame(): Game | undefined {
+    return this.game;
+  }
 }

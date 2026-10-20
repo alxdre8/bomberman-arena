@@ -106,7 +106,7 @@ jobs:
     name: "SonarCloud - Code Quality"
     runs-on: ubuntu-latest
     needs: [backend, client]
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout du code

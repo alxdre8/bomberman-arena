@@ -87,10 +87,7 @@ describe('Intégration Réseau - player:plant-bomb & bomb:planted', () => {
     client1.emit('player:plant-bomb');
 
     // 5. Attendre la réception de bomb:planted par les deux clients
-    const [payload1, payload2] = await Promise.all([
-      client1BombPromise,
-      client2BombPromise,
-    ]);
+    const [payload1, payload2] = await Promise.all([client1BombPromise, client2BombPromise]);
 
     expect(payload1.ownerId).toBe(client1.id);
     expect(payload1.position).toEqual({ x: 1, y: 1 });

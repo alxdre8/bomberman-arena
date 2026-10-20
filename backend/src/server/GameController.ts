@@ -1,5 +1,9 @@
-
-import type { JoinRoomResult, MovePayload, ServerToClientEvents, BombPlantedPayload } from '../protocol/types.js';
+import type {
+  JoinRoomResult,
+  MovePayload,
+  ServerToClientEvents,
+  BombPlantedPayload,
+} from '../protocol/types.js';
 import { Lobby } from '../rooms/Lobby.js';
 import { RoomManager } from '../rooms/RoomManager.js';
 import { PlayerConnection, type ClientSocket } from '../rooms/PlayerConnection.js';
@@ -68,9 +72,9 @@ export class GameController {
     if (!currentGame || currentGame.status !== GameStatus.Running) return;
 
     const currentPlayer = currentGame.getPlayer(playerId);
-    if (!currentPlayer || !currentPlayer.isAlive()) return;
+    if (!currentPlayer || !currentPlayer.isAlive) return;
 
-    const currentGrid    = currentGame.gridView;
+    const currentGrid = currentGame.gridView;
     const targetPosition = currentPlayer.candidatePosition(payload.direction);
     if (currentGrid.isWalkable(targetPosition)) {
       currentPlayer.setPosition(targetPosition);
