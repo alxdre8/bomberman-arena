@@ -56,6 +56,11 @@ export class GameServer {
     return this.connectionCount;
   }
 
+  /** Gestionnaire des salles (utile pour l'orchestration des tests d'intégration). */
+  get roomManager(): RoomManager {
+    return this.rooms;
+  }
+
   /** Démarre l'écoute HTTP + WebSocket. */
   async start(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
