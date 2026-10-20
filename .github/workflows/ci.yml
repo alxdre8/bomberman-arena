@@ -15,7 +15,7 @@ jobs:
   # Backend : Lint + Format + Typecheck + Tests + Couverture + Build
   # ──────────────────────────────────────────────────────────────────────────
   backend:
-    name: "Backend - Lint, Typecheck, Tests & Build"
+    name: "Backend - Lint, Typecheck & Tests"
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -70,7 +70,7 @@ jobs:
   # Client : Lint + Typecheck + Build
   # ──────────────────────────────────────────────────────────────────────────
   client:
-    name: "Client - Lint, Typecheck & Build"
+    name: "Client - Typecheck"
     runs-on: ubuntu-latest
     defaults:
       run:
