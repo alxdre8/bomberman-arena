@@ -17,9 +17,7 @@ export class GameController {
 
   /** Attache les écouteurs d'événements à une nouvelle connexion. */
   handleConnection(socket: ClientSocket): void {
-    socket.on('room:join', (payload, ack) =>
-      this.handleJoin(socket, payload.playerName, ack),
-    );
+    socket.on('room:join', (payload, ack) => this.handleJoin(socket, payload.playerName, ack));
     socket.on('room:leave', () => this.handleLeave(socket.id));
     socket.on('player:move', (payload) => this.handleMove(socket.id, payload));
     socket.on('player:plant-bomb', () => this.handlePlantBomb(socket.id));

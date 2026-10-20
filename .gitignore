@@ -2,6 +2,8 @@ node_modules/
 dist/
 build/
 coverage/
+.scannerwork/
+out/
 *.log
 .env
 .DS_Store

@@ -30,11 +30,7 @@ export class Lobby {
     this.minPlayers = config.minPlayers ?? DEFAULT_MIN_PLAYERS;
     this.maxPlayers = config.maxPlayers ?? DEFAULT_MAX_PLAYERS;
 
-    if (
-      this.minPlayers < 2 ||
-      this.maxPlayers > 4 ||
-      this.minPlayers > this.maxPlayers
-    ) {
+    if (this.minPlayers < 2 || this.maxPlayers > 4 || this.minPlayers > this.maxPlayers) {
       throw new Error('Un lobby accepte entre 2 et 4 joueurs.');
     }
 

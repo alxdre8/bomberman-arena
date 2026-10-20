@@ -44,10 +44,7 @@ export class Grid {
   /** Vérifie que la position est dans les limites de la grille. */
   isValidPosition(position: Position): boolean {
     return (
-      position.x >= 0 &&
-      position.x < this.width &&
-      position.y >= 0 &&
-      position.y < this.height
+      position.x >= 0 && position.x < this.width && position.y >= 0 && position.y < this.height
     );
   }
 
