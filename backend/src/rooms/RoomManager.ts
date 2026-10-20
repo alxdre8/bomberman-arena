@@ -1,3 +1,4 @@
+import type { Game } from '../engine/Game.js';
 import type { PlayerId } from '../engine/types.js';
 import { Lobby } from './Lobby.js';
 import type { PlayerConnection } from './PlayerConnection.js';
@@ -54,6 +55,11 @@ export class RoomManager {
   getLobbyOfPlayer(playerId: PlayerId): Lobby | undefined {
     const lobbyId = this.playerToLobby.get(playerId);
     return lobbyId ? this.lobbies.get(lobbyId) : undefined;
+  }
+
+  /** Renvoie la partie active dans laquelle le joueur est engagé, si elle existe. */
+  getGameOfPlayer(playerId: PlayerId): Game | undefined {
+    return this.getLobbyOfPlayer(playerId)?.game;
   }
 
   private findOpenLobby(): Lobby | undefined {
