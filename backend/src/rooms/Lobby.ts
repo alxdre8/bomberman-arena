@@ -9,13 +9,13 @@ export interface LobbyConfig {
   maxPlayers?: number;
 }
 
-const DEFAULT_MIN_PLAYERS = 2;
+const DEFAULT_MIN_PLAYERS = 1;
 const DEFAULT_MAX_PLAYERS = 4;
 
 /**
  * Lobby : salle d'attente pour une partie.
  *
- * Un lobby accueille 2 à 4 joueurs avant le démarrage. Le lancement
+ * Un lobby accueille 1 à 4 joueurs avant le démarrage. Le lancement
  * automatique de la partie (quand le minimum de joueurs est atteint et que
  * tous sont prêts) sera branché lors de la Phase 2.
  */
@@ -35,11 +35,11 @@ export class Lobby {
     this.maxPlayers = config.maxPlayers ?? DEFAULT_MAX_PLAYERS;
 
     if (
-      this.minPlayers < 2 ||
+      this.minPlayers < 1 ||
       this.maxPlayers > 4 ||
       this.minPlayers > this.maxPlayers
     ) {
-      throw new Error('Un lobby accepte entre 2 et 4 joueurs.');
+      throw new Error('Un lobby accepte entre 1 et 4 joueurs.');
     }
 
     this.id = randomUUID();
@@ -82,5 +82,13 @@ export class Lobby {
   /** Vrai si le nombre minimal de joueurs est atteint (Phase 2 : + ready). */
   canStart(): boolean {
     return !this.started && this.connections.size >= this.minPlayers;
+  }
+
+  start(game: Game): void {
+    if (!this.canStart()) {
+      throw new Error('Le lobby ne peut pas démarrer.');
+    }
+    this.game = game;
+    this.started = true;
   }
 }

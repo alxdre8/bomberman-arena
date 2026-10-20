@@ -1,9 +1,16 @@
 
-import type { JoinRoomResult, MovePayload, ServerToClientEvents, BombPlantedPayload } from '../protocol/types.js';
+import type {
+  BombPlantedPayload,
+  GameStatePayload,
+  JoinRoomResult,
+  MovePayload,
+} from '../protocol/types.js';
 import { Lobby } from '../rooms/Lobby.js';
 import { RoomManager } from '../rooms/RoomManager.js';
 import { PlayerConnection, type ClientSocket } from '../rooms/PlayerConnection.js';
-import { GameStatus } from '../engine/types.js';
+import { Game } from '../engine/Game.js';
+import { Player } from '../engine/Player.js';
+import { GameStatus, TileKind } from '../engine/types.js';
 
 /**
  * Pont entre la couche transport (Socket.IO) et le domaine (lobbies, moteur).
@@ -11,8 +18,7 @@ import { GameStatus } from '../engine/types.js';
  * C'est la seule couche qui connaît les événements réseau. Les règles de jeu
  * (collisions, explosions) restent dans le moteur (`src/engine/`), jamais ici.
  *
- * Squelette Phase 1 : joindre/quitter un lobby fonctionne. Les actions de jeu
- * (déplacement, bombe, ready) sont câblées mais non implémentées (Phase 2).
+ * Les actions de jeu sont validées par le moteur avant d'être diffusées.
  */
 export class GameController {
   constructor(private readonly rooms: RoomManager) {}
@@ -66,11 +72,11 @@ export class GameController {
     const lobby = this.rooms.getLobbyOfPlayer(playerId);
     if (!lobby) return;
 
-    const currentGame = lobby.getGame();
+    const currentGame = lobby.game;
     if (!currentGame || currentGame.status !== GameStatus.Running) return;
 
     const currentPlayer = currentGame.getPlayer(playerId);
-    if (!currentPlayer || !currentPlayer.isAlive()) return;
+    if (!currentPlayer || !currentPlayer.isAlive) return;
 
     const currentGrid    = currentGame.gridView;
     const targetPosition = currentPlayer.candidatePosition(payload.direction);
@@ -110,9 +116,55 @@ export class GameController {
   }
 
   private handleReady(playerId: string): void {
-    void playerId;
-    // TODO Phase 2 : marquer le joueur prêt ; si le lobby peut démarrer,
-    // créer la partie (Game) et diffuser `game:start`.
+    const lobby = this.rooms.getLobbyOfPlayer(playerId);
+    if (!lobby || !lobby.canStart()) return;
+
+    const players = lobby.getPlayers().map(
+      (connection, index) =>
+        new Player(connection.id, connection.name, {
+          x: index === 0 ? 0 : 14,
+          y: index === 0 ? 0 : 14,
+        }),
+    );
+    const game = new Game({ grid: { width: 15, height: 15 }, players });
+    for (let y = 0; y < game.gridView.height; y += 1) {
+      for (let x = 0; x < game.gridView.width; x += 1) {
+        if (y % 2 === 1 && x % 2 === 1) {
+          game.gridView.setCell({ x, y }, TileKind.IndestructibleWall);
+        }
+      }
+    }
+    game.start();
+    lobby.start(game);
+
+    const payload = this.createGameStatePayload(game);
+    for (const player of lobby.getPlayers()) {
+      player.emit('game:start', payload);
+    }
+  }
+
+  private createGameStatePayload(game: Game): GameStatePayload {
+    const grid = game.gridView;
+    return {
+      status: game.status,
+      grid: {
+        width: grid.width,
+        height: grid.height,
+        tiles: Array.from({ length: grid.height }, (_, y) =>
+          Array.from({ length: grid.width }, (_, x) =>
+            grid.getCell({ x, y }),
+          ),
+        ),
+      },
+      players: game.players.map((player) => ({
+        id: player.id,
+        name: player.name,
+        position: player.position,
+        alive: player.isAlive,
+        maxBombs: player.maxBombs,
+        bombRange: player.bombRange,
+      })),
+    };
   }
 
   private broadcastPlayers(lobby: Lobby): void {
