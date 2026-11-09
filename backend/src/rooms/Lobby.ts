@@ -117,17 +117,11 @@ export class Lobby {
     return this.game;
   }
 
-  /**
-   * Verrouille le lobby et lui associe la partie lancée : plus aucun joueur
-   * ne peut le rejoindre.
-   *
-   * @throws {Error} Si les conditions de démarrage ne sont pas réunies.
-   */
   start(game: Game): void {
     if (!this.canStart()) {
-      throw new Error('Le lobby ne peut pas encore démarrer.');
+      throw new Error('Le lobby ne peut pas démarrer.');
     }
-    this.started = true;
     this.game = game;
+    this.started = true;
   }
 }

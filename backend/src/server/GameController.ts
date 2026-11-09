@@ -5,11 +5,12 @@ import type {
   GameStatePayload,
   RoomPlayersPayload,
 } from '../protocol/types.js';
-import { Game } from '../engine/Game.js';
 import { Lobby } from '../rooms/Lobby.js';
 import { RoomManager } from '../rooms/RoomManager.js';
 import { PlayerConnection, type ClientSocket } from '../rooms/PlayerConnection.js';
-import { GameStatus } from '../engine/types.js';
+import { Game } from '../engine/Game.js';
+import { Player } from '../engine/Player.js';
+import { GameStatus, TileKind } from '../engine/types.js';
 
 /**
  * Pont entre la couche transport (Socket.IO) et le domaine (lobbies, moteur).
@@ -17,8 +18,7 @@ import { GameStatus } from '../engine/types.js';
  * C'est la seule couche qui connaît les événements réseau. Les règles de jeu
  * (collisions, explosions) restent dans le moteur (`src/engine/`), jamais ici.
  *
- * Squelette Phase 1 : joindre/quitter un lobby fonctionne. Les actions de jeu
- * (déplacement, bombe, ready) sont câblées mais non implémentées (Phase 2).
+ * Les actions de jeu sont validées par le moteur avant d'être diffusées.
  */
 export class GameController {
   constructor(private readonly rooms: RoomManager) {}
@@ -72,7 +72,7 @@ export class GameController {
     const lobby = this.rooms.getLobbyOfPlayer(playerId);
     if (!lobby) return;
 
-    const currentGame = lobby.getGame();
+    const currentGame = lobby.game;
     if (!currentGame || currentGame.status !== GameStatus.Running) return;
 
     const currentPlayer = currentGame.getPlayer(playerId);
