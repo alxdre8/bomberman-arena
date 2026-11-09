@@ -97,6 +97,13 @@ export class Lobby {
     return this.getPlayers().map((player) => player.name);
   }
 
+  /** Noms des joueurs qui se sont déclarés prêts. */
+  getReadyPlayerNames(): string[] {
+    return this.getPlayers()
+      .filter((player) => this.readyPlayers.has(player.id))
+      .map((player) => player.name);
+  }
+
   /** Vrai si le minimum de joueurs est atteint et que tous sont prêts. */
   canStart(): boolean {
     return (
