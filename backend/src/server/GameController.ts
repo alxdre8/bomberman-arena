@@ -1,9 +1,11 @@
 import type {
   JoinRoomResult,
   MovePayload,
-  ServerToClientEvents,
   BombPlantedPayload,
+  GameStatePayload,
+  RoomPlayersPayload,
 } from '../protocol/types.js';
+import { Game } from '../engine/Game.js';
 import { Lobby } from '../rooms/Lobby.js';
 import { RoomManager } from '../rooms/RoomManager.js';
 import { PlayerConnection, type ClientSocket } from '../rooms/PlayerConnection.js';
@@ -61,6 +63,8 @@ export class GameController {
     const lobby = this.rooms.leave(playerId);
     if (lobby) {
       this.broadcastPlayers(lobby);
+      // Le départ d'un joueur non prêt peut suffire à réunir les conditions.
+      this.tryStartGame(lobby);
     }
   }
 
@@ -112,15 +116,45 @@ export class GameController {
   }
 
   private handleReady(playerId: string): void {
-    void playerId;
-    // TODO Phase 2 : marquer le joueur prêt ; si le lobby peut démarrer,
-    // créer la partie (Game) et diffuser `game:start`.
+    const lobby = this.rooms.getLobbyOfPlayer(playerId);
+    if (!lobby || lobby.hasStarted) return;
+
+    lobby.setPlayerReady(playerId, true);
+    this.broadcastPlayers(lobby);
+    this.tryStartGame(lobby);
+  }
+
+  /**
+   * Lance la partie si le lobby le permet : création du moteur (terrain
+   * généré, joueurs placés aux coins), démarrage puis diffusion de `game:start`.
+   */
+  private tryStartGame(lobby: Lobby): void {
+    if (!lobby.canStart()) return;
+
+    const game = Game.create(lobby.getPlayers().map(({ id, name }) => ({ id, name })));
+    lobby.start(game);
+    game.start();
+
+    const payload = this.buildGameState(game);
+    for (const player of lobby.getPlayers()) {
+      player.emit('game:start', payload);
+    }
+  }
+
+  private buildGameState(game: Game): GameStatePayload {
+    const grid = game.gridView;
+    return {
+      status: game.status,
+      grid: { width: grid.width, height: grid.height, tiles: grid.toTiles() },
+      players: game.players.map((player) => player.toState()),
+    };
   }
 
   private broadcastPlayers(lobby: Lobby): void {
-    const payload = {
+    const payload: RoomPlayersPayload = {
       lobbyId: lobby.id,
       playerNames: lobby.getPlayerNames(),
+      readyPlayerNames: lobby.getReadyPlayerNames(),
       minPlayers: lobby.minPlayers,
       maxPlayers: lobby.maxPlayers,
     };
