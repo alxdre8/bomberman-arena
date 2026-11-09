@@ -1,9 +1,8 @@
-
 import type {
-  BombPlantedPayload,
-  GameStatePayload,
   JoinRoomResult,
   MovePayload,
+  GameStatePayload,
+  BombPlantedPayload,
 } from '../protocol/types.js';
 import { Lobby } from '../rooms/Lobby.js';
 import { RoomManager } from '../rooms/RoomManager.js';
@@ -25,9 +24,7 @@ export class GameController {
 
   /** Attache les écouteurs d'événements à une nouvelle connexion. */
   handleConnection(socket: ClientSocket): void {
-    socket.on('room:join', (payload, ack) =>
-      this.handleJoin(socket, payload.playerName, ack),
-    );
+    socket.on('room:join', (payload, ack) => this.handleJoin(socket, payload.playerName, ack));
     socket.on('room:leave', () => this.handleLeave(socket.id));
     socket.on('player:move', (payload) => this.handleMove(socket.id, payload));
     socket.on('player:plant-bomb', () => this.handlePlantBomb(socket.id));
@@ -78,7 +75,7 @@ export class GameController {
     const currentPlayer = currentGame.getPlayer(playerId);
     if (!currentPlayer || !currentPlayer.isAlive) return;
 
-    const currentGrid    = currentGame.gridView;
+    const currentGrid = currentGame.gridView;
     const targetPosition = currentPlayer.candidatePosition(payload.direction);
     if (currentGrid.isWalkable(targetPosition)) {
       currentPlayer.setPosition(targetPosition);

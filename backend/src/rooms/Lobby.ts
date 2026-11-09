@@ -15,9 +15,8 @@ const DEFAULT_MAX_PLAYERS = 4;
 /**
  * Lobby : salle d'attente pour une partie.
  *
- * Un lobby accueille 1 à 4 joueurs avant le démarrage. Le lancement
- * automatique de la partie (quand le minimum de joueurs est atteint et que
- * tous sont prêts) sera branché lors de la Phase 2.
+ * Un lobby accueille 2 à 4 joueurs avant le démarrage. La partie peut
+ * démarrer quand le minimum de joueurs est atteint et que tous sont prêts.
  */
 export class Lobby {
   readonly id: string;
@@ -25,6 +24,7 @@ export class Lobby {
   readonly minPlayers: number;
   readonly maxPlayers: number;
   private readonly connections = new Map<PlayerId, PlayerConnection>();
+  private readonly readyPlayers = new Set<PlayerId>();
   private started = false;
 
   /** Instance du moteur de jeu actif une fois la partie lancée. */
@@ -34,12 +34,8 @@ export class Lobby {
     this.minPlayers = config.minPlayers ?? DEFAULT_MIN_PLAYERS;
     this.maxPlayers = config.maxPlayers ?? DEFAULT_MAX_PLAYERS;
 
-    if (
-      this.minPlayers < 1 ||
-      this.maxPlayers > 4 ||
-      this.minPlayers > this.maxPlayers
-    ) {
-      throw new Error('Un lobby accepte entre 1 et 4 joueurs.');
+    if (this.minPlayers < 2 || this.maxPlayers > 4 || this.minPlayers > this.maxPlayers) {
+      throw new Error('Un lobby accepte entre 2 et 4 joueurs.');
     }
 
     this.id = randomUUID();
@@ -68,7 +64,29 @@ export class Lobby {
 
   /** Retire un joueur du lobby. */
   remove(playerId: PlayerId): boolean {
-    return this.connections.delete(playerId);
+    const removed = this.connections.delete(playerId);
+    if (removed) {
+      this.readyPlayers.delete(playerId);
+    }
+    return removed;
+  }
+
+  /** Modifie l'état prêt d'un joueur présent dans le lobby. */
+  setPlayerReady(playerId: PlayerId, ready: boolean): void {
+    if (!this.connections.has(playerId)) {
+      throw new Error('Le joueur n’est pas présent dans ce lobby.');
+    }
+
+    if (ready) {
+      this.readyPlayers.add(playerId);
+    } else {
+      this.readyPlayers.delete(playerId);
+    }
+  }
+
+  /** Indique si un joueur présent est prêt. */
+  isPlayerReady(playerId: PlayerId): boolean {
+    return this.readyPlayers.has(playerId);
   }
 
   getPlayers(): PlayerConnection[] {
@@ -79,9 +97,17 @@ export class Lobby {
     return this.getPlayers().map((player) => player.name);
   }
 
-  /** Vrai si le nombre minimal de joueurs est atteint (Phase 2 : + ready). */
+  /** Vrai si le minimum de joueurs est atteint et que tous sont prêts. */
   canStart(): boolean {
-    return !this.started && this.connections.size >= this.minPlayers;
+    return (
+      !this.started &&
+      this.connections.size >= this.minPlayers &&
+      this.readyPlayers.size === this.connections.size
+    );
+  }
+
+  getGame(): Game | undefined {
+    return this.game;
   }
 
   start(game: Game): void {

@@ -1,2 +1,9 @@
 node_modules/
-client/out/
+dist/
+build/
+coverage/
+.scannerwork/
+out/
+*.log
+.env
+.DS_Store

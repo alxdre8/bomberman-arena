@@ -9,11 +9,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "dist",
-    "baseUrl": ".",
     "paths": {
-      "@renderer/*": ["src/renderer/src/*"],
-      "@main/*": ["src/main/*"],
-      "@preload/*": ["src/preload/*"]
+      "@renderer/*": ["./src/renderer/src/*"],
+      "@main/*": ["./src/main/*"],
+      "@preload/*": ["./src/preload/*"]
     }
   },
   "include": ["src/**/*"],
