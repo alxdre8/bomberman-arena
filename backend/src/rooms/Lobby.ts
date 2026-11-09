@@ -9,7 +9,7 @@ export interface LobbyConfig {
   maxPlayers?: number;
 }
 
-const DEFAULT_MIN_PLAYERS = 1;
+const DEFAULT_MIN_PLAYERS = 2;
 const DEFAULT_MAX_PLAYERS = 4;
 
 /**
