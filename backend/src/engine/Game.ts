@@ -1,13 +1,28 @@
 import { Bomb } from './Bomb.js';
-import { Grid, type GridConfig } from './Grid.js';
+import {
+  DEFAULT_GRID_HEIGHT,
+  DEFAULT_GRID_WIDTH,
+  Grid,
+  type GridGenerationConfig,
+} from './Grid.js';
 import { Player } from './Player.js';
 import { GameStatus } from './types.js';
 import type { PlayerId, Position } from './types.js';
 
 /** Options de création d'une partie. */
 export interface GameConfig {
-  grid: GridConfig;
+  /**
+   * Terrain de la partie : soit une grille déjà construite (utile pour les
+   * tests), soit des options de génération transmises à `Grid.generate`.
+   */
+  grid: Grid | GridGenerationConfig;
   players: Player[];
+}
+
+/** Identité d'un participant, avant sa création côté moteur. */
+export interface Participant {
+  id: PlayerId;
+  name: string;
 }
 
 /**
@@ -28,10 +43,35 @@ export class Game {
   private _winnerId: PlayerId | null = null;
 
   constructor(config: GameConfig) {
-    this.grid = new Grid(config.grid);
+    this.grid = config.grid instanceof Grid ? config.grid : Grid.generate(config.grid);
     for (const player of config.players) {
       this.playersById.set(player.id, player);
     }
+  }
+
+  /**
+   * Crée une partie prête à démarrer : génère le terrain puis place chaque
+   * participant sur un point d'apparition (un coin par joueur).
+   *
+   * @param participants Joueurs de la partie (au plus un par point d'apparition).
+   * @param grid Options de génération du terrain (défaut : 13x11).
+   * @throws {Error} S'il y a plus de participants que de points d'apparition.
+   */
+  static create(
+    participants: Participant[],
+    grid: GridGenerationConfig = { width: DEFAULT_GRID_WIDTH, height: DEFAULT_GRID_HEIGHT },
+  ): Game {
+    const generated = Grid.generate(grid);
+    const spawns = generated.getSpawnPoints();
+
+    if (participants.length > spawns.length) {
+      throw new Error(`Une partie accepte au plus ${spawns.length} joueurs.`);
+    }
+
+    const players = participants.map(
+      (participant, index) => new Player(participant.id, participant.name, spawns[index]),
+    );
+    return new Game({ grid: generated, players });
   }
 
   get status(): GameStatus {

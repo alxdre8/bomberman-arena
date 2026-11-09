@@ -1,4 +1,4 @@
-import { Direction, PlayerId, Position } from './types.js';
+import { Direction, PlayerId, PlayerState, Position } from './types.js';
 import { PowerUp } from './PowerUp.js';
 
 /**
@@ -77,6 +77,18 @@ export class Player {
         // TODO Phase 3 : la vitesse est dépendante du tick de déplacement.
         break;
     }
+  }
+
+  /** Instantané sérialisable du joueur, diffusé aux clients. */
+  toState(): PlayerState {
+    return {
+      id: this.id,
+      name: this.name,
+      position: this.position,
+      alive: this._alive,
+      maxBombs: this._maxBombs,
+      bombRange: this._bombRange,
+    };
   }
 
   /** Tue le joueur (touché par une explosion). */

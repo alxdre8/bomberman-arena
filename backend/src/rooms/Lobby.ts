@@ -97,6 +97,13 @@ export class Lobby {
     return this.getPlayers().map((player) => player.name);
   }
 
+  /** Noms des joueurs qui se sont déclarés prêts. */
+  getReadyPlayerNames(): string[] {
+    return this.getPlayers()
+      .filter((player) => this.readyPlayers.has(player.id))
+      .map((player) => player.name);
+  }
+
   /** Vrai si le minimum de joueurs est atteint et que tous sont prêts. */
   canStart(): boolean {
     return (
@@ -108,5 +115,19 @@ export class Lobby {
 
   getGame(): Game | undefined {
     return this.game;
+  }
+
+  /**
+   * Verrouille le lobby et lui associe la partie lancée : plus aucun joueur
+   * ne peut le rejoindre.
+   *
+   * @throws {Error} Si les conditions de démarrage ne sont pas réunies.
+   */
+  start(game: Game): void {
+    if (!this.canStart()) {
+      throw new Error('Le lobby ne peut pas encore démarrer.');
+    }
+    this.started = true;
+    this.game = game;
   }
 }
