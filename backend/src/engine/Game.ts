@@ -69,22 +69,76 @@ export class Game {
   /**
    * Pose une bombe pour le joueur donné.
    *
-   * TODO Phase 2 : vérifier la limite `maxBombs` du joueur et les bombes déjà
-   * posées sur la case.
+   * @param playerId Identifiant du joueur poseur.
+   * @param position Position de pose (par défaut : position actuelle du joueur).
+   * @returns La bombe instanciée ou null si la pose est impossible (quota atteint,
+   *          case déjà occupée, joueur mort/inconnu, partie non démarrée).
    */
-  plantBomb(playerId: PlayerId, position: Position): Bomb {
-    const owner = this.playersById.get(playerId);
-    if (!owner) {
-      throw new Error(`Joueur inconnu : ${playerId}`);
+  plantBomb(playerId: PlayerId, position?: Position): Bomb | null {
+    if (this._status !== GameStatus.Running) {
+      return null;
     }
+
+    const owner = this.playersById.get(playerId);
+    if (!owner || !owner.isAlive) {
+      return null;
+    }
+
+    const targetPosition = position ? { ...position } : owner.position;
+
+    if (!this.grid.isValidPosition(targetPosition)) {
+      return null;
+    }
+
+    if (this.hasBombAt(targetPosition)) {
+      return null;
+    }
+
+    const activeBombs = this.getBombsByPlayer(playerId);
+    if (activeBombs.length >= owner.maxBombs) {
+      return null;
+    }
+
     const bomb = new Bomb({
       ownerId: playerId,
-      position,
+      position: targetPosition,
       plantedAt: Date.now(),
       range: owner.bombRange,
     });
+
     this.bombsById.set(bomb.id, bomb);
     return bomb;
+  }
+
+  /** Renvoie toutes les bombes actives posées par un joueur donné. */
+  getBombsByPlayer(playerId: PlayerId): Bomb[] {
+    const result: Bomb[] = [];
+    for (const bomb of this.bombsById.values()) {
+      if (bomb.ownerId === playerId) {
+        result.push(bomb);
+      }
+    }
+    return result;
+  }
+
+  /** Renvoie la bombe présente à la position donnée, si elle existe. */
+  getBombAt(position: Position): Bomb | undefined {
+    for (const bomb of this.bombsById.values()) {
+      if (bomb.position.x === position.x && bomb.position.y === position.y) {
+        return bomb;
+      }
+    }
+    return undefined;
+  }
+
+  /** Vrai si une bombe est présente sur la case indiquée. */
+  hasBombAt(position: Position): boolean {
+    return this.getBombAt(position) !== undefined;
+  }
+
+  /** Supprime une bombe de la partie (ex: après son explosion). */
+  removeBomb(bombId: string): boolean {
+    return this.bombsById.delete(bombId);
   }
 
   /**

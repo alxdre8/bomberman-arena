@@ -7,15 +7,19 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "type": "commonjs",
   "devDependencies": {
     "@electron-toolkit/utils": "^4.0.0",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.5.0",
     "electron": "^44.3.0",
     "electron-vite": "^5.0.0",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
     "typescript": "^7.0.2",
     "vite": "^7.3.6"
   },

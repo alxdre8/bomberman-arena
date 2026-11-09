@@ -25,10 +25,9 @@ export class GameServer {
       res.end('Bomberman Arena - Serveur WebSocket');
     });
 
-    this.io = new Server<ClientToServerEvents, ServerToClientEvents>(
-      this.httpServer,
-      { cors: { origin: config.clientOrigin } },
-    );
+    this.io = new Server<ClientToServerEvents, ServerToClientEvents>(this.httpServer, {
+      cors: { origin: config.clientOrigin },
+    });
 
     this.rooms = new RoomManager();
     this.controller = new GameController(this.rooms);
@@ -54,6 +53,11 @@ export class GameServer {
   /** Nombre de connexions client actuellement ouvertes. */
   get connectedClients(): number {
     return this.connectionCount;
+  }
+
+  /** Gestionnaire des salles (utile pour l'orchestration des tests d'intégration). */
+  get roomManager(): RoomManager {
+    return this.rooms;
   }
 
   /** Démarre l'écoute HTTP + WebSocket. */
