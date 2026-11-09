@@ -1,12 +1,10 @@
 import type {
   JoinRoomResult,
   MovePayload,
-  GameStatePayload,
   BombPlantedPayload,
   GameStatePayload,
   RoomPlayersPayload,
 } from '../protocol/types.js';
-import { Game } from '../engine/Game.js';
 import { Lobby } from '../rooms/Lobby.js';
 import { RoomManager } from '../rooms/RoomManager.js';
 import { PlayerConnection, type ClientSocket } from '../rooms/PlayerConnection.js';
