@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 
@@ -10,7 +10,9 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
-    }
+    },
+    fullscreen: true,
+    titleBarStyle: 'hidden',
   })
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
@@ -22,6 +24,10 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   createWindow()
+
+  ipcMain.on('quit-app', () => {
+    app.quit()
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

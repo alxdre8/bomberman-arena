@@ -5,5 +5,6 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   on: (channel, callback) => {
     electron.ipcRenderer.on(channel, (_event, ...args) => callback(...args));
   },
-  removeAllListeners: (channel) => electron.ipcRenderer.removeAllListeners(channel)
+  removeAllListeners: (channel) => electron.ipcRenderer.removeAllListeners(channel),
+  quitApp: () => electron.ipcRenderer.send("quit-app")
 });

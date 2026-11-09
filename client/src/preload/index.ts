@@ -6,5 +6,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   on: (channel: string, callback: (...args: unknown[]) => void) => {
     ipcRenderer.on(channel, (_event, ...args) => callback(...args))
   },
-  removeAllListeners: (channel: string) => ipcRenderer.removeAllListeners(channel)
+  removeAllListeners: (channel: string) => ipcRenderer.removeAllListeners(channel),
+  quitApp: () => ipcRenderer.send('quit-app')
 })

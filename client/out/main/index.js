@@ -17,7 +17,9 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.js"),
       sandbox: false
-    }
+    },
+    fullscreen: true,
+    titleBarStyle: "hidden"
   });
   if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
     mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
@@ -27,6 +29,9 @@ function createWindow() {
 }
 electron.app.whenReady().then(() => {
   createWindow();
+  electron.ipcMain.on("quit-app", () => {
+    electron.app.quit();
+  });
   electron.app.on("activate", () => {
     if (electron.BrowserWindow.getAllWindows().length === 0) createWindow();
   });
