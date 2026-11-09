@@ -35,6 +35,8 @@ export interface RoomJoinedPayload {
 export interface RoomPlayersPayload {
   lobbyId: string;
   playerNames: string[];
+  /** Noms des joueurs s'étant déclarés prêts (sous-ensemble de `playerNames`). */
+  readyPlayerNames: string[];
   minPlayers: number;
   maxPlayers: number;
 }

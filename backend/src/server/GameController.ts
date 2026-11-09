@@ -3,7 +3,10 @@ import type {
   MovePayload,
   GameStatePayload,
   BombPlantedPayload,
+  GameStatePayload,
+  RoomPlayersPayload,
 } from '../protocol/types.js';
+import { Game } from '../engine/Game.js';
 import { Lobby } from '../rooms/Lobby.js';
 import { RoomManager } from '../rooms/RoomManager.js';
 import { PlayerConnection, type ClientSocket } from '../rooms/PlayerConnection.js';
@@ -62,6 +65,8 @@ export class GameController {
     const lobby = this.rooms.leave(playerId);
     if (lobby) {
       this.broadcastPlayers(lobby);
+      // Le départ d'un joueur non prêt peut suffire à réunir les conditions.
+      this.tryStartGame(lobby);
     }
   }
 
@@ -114,60 +119,44 @@ export class GameController {
 
   private handleReady(playerId: string): void {
     const lobby = this.rooms.getLobbyOfPlayer(playerId);
-    if (!lobby || !lobby.canStart()) return;
+    if (!lobby || lobby.hasStarted) return;
 
-    const players = lobby.getPlayers().map(
-      (connection, index) =>
-        new Player(connection.id, connection.name, {
-          x: index === 0 ? 0 : 14,
-          y: index === 0 ? 0 : 14,
-        }),
-    );
-    const game = new Game({ grid: { width: 15, height: 15 }, players });
-    for (let y = 0; y < game.gridView.height; y += 1) {
-      for (let x = 0; x < game.gridView.width; x += 1) {
-        if (y % 2 === 1 && x % 2 === 1) {
-          game.gridView.setCell({ x, y }, TileKind.IndestructibleWall);
-        }
-      }
-    }
-    game.start();
+    lobby.setPlayerReady(playerId, true);
+    this.broadcastPlayers(lobby);
+    this.tryStartGame(lobby);
+  }
+
+  /**
+   * Lance la partie si le lobby le permet : création du moteur (terrain
+   * généré, joueurs placés aux coins), démarrage puis diffusion de `game:start`.
+   */
+  private tryStartGame(lobby: Lobby): void {
+    if (!lobby.canStart()) return;
+
+    const game = Game.create(lobby.getPlayers().map(({ id, name }) => ({ id, name })));
     lobby.start(game);
+    game.start();
 
-    const payload = this.createGameStatePayload(game);
+    const payload = this.buildGameState(game);
     for (const player of lobby.getPlayers()) {
       player.emit('game:start', payload);
     }
   }
 
-  private createGameStatePayload(game: Game): GameStatePayload {
+  private buildGameState(game: Game): GameStatePayload {
     const grid = game.gridView;
     return {
       status: game.status,
-      grid: {
-        width: grid.width,
-        height: grid.height,
-        tiles: Array.from({ length: grid.height }, (_, y) =>
-          Array.from({ length: grid.width }, (_, x) =>
-            grid.getCell({ x, y }),
-          ),
-        ),
-      },
-      players: game.players.map((player) => ({
-        id: player.id,
-        name: player.name,
-        position: player.position,
-        alive: player.isAlive,
-        maxBombs: player.maxBombs,
-        bombRange: player.bombRange,
-      })),
+      grid: { width: grid.width, height: grid.height, tiles: grid.toTiles() },
+      players: game.players.map((player) => player.toState()),
     };
   }
 
   private broadcastPlayers(lobby: Lobby): void {
-    const payload = {
+    const payload: RoomPlayersPayload = {
       lobbyId: lobby.id,
       playerNames: lobby.getPlayerNames(),
+      readyPlayerNames: lobby.getReadyPlayerNames(),
       minPlayers: lobby.minPlayers,
       maxPlayers: lobby.maxPlayers,
     };
