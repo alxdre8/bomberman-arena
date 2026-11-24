@@ -1,12 +1,19 @@
 import { Direction, PlayerId, PlayerState, Position } from './types.js';
 import { PowerUp } from './PowerUp.js';
 
+/** Délai minimal (ms) entre deux déplacements d'un joueur sans bonus de vitesse. */
+export const BASE_MOVE_DELAY_MS = 200;
+/** Gain (ms) apporté par chaque bonus de vitesse. */
+export const SPEED_BONUS_STEP_MS = 40;
+/** Délai plancher (ms) : la vitesse ne peut pas augmenter au-delà. */
+export const MIN_MOVE_DELAY_MS = 80;
+
 /**
  * Joueur contrôlé par un client.
  *
  * Le moteur (et non le client) fait autorité : position, vie et bonus sont
- * stockés ici. Les collisions sont validées par la grille avant tout
- * déplacement effectif (Phase 2).
+ * stockés ici. Les collisions sont validées par le moteur (`Game.movePlayer`)
+ * avant tout déplacement effectif.
  */
 export class Player {
   readonly id: PlayerId;
@@ -16,6 +23,8 @@ export class Player {
   private _alive = true;
   private _maxBombs = 1;
   private _bombRange = 1;
+  private _speed = 0;
+  private _lastMoveAt = Number.NEGATIVE_INFINITY;
   private readonly _powerUps: PowerUp[] = [];
 
   constructor(id: PlayerId, name: string, spawn: Position) {
@@ -38,6 +47,26 @@ export class Player {
 
   get bombRange(): number {
     return this._bombRange;
+  }
+
+  /** Nombre de bonus de vitesse ramassés. */
+  get speed(): number {
+    return this._speed;
+  }
+
+  /** Délai minimal entre deux déplacements, réduit par les bonus de vitesse. */
+  get moveDelayMs(): number {
+    return Math.max(MIN_MOVE_DELAY_MS, BASE_MOVE_DELAY_MS - this._speed * SPEED_BONUS_STEP_MS);
+  }
+
+  /** Vrai si le délai depuis le dernier déplacement est écoulé à l'instant donné. */
+  canMoveAt(now: number): boolean {
+    return now - this._lastMoveAt >= this.moveDelayMs;
+  }
+
+  /** Mémorise l'instant du dernier déplacement effectif (base du délai suivant). */
+  markMoved(now: number): void {
+    this._lastMoveAt = now;
   }
 
   get powerUps(): PowerUp[] {
@@ -74,7 +103,7 @@ export class Player {
         this._bombRange += 1;
         break;
       case PowerUp.IncreaseSpeed:
-        // TODO Phase 3 : la vitesse est dépendante du tick de déplacement.
+        this._speed += 1;
         break;
     }
   }
@@ -88,6 +117,7 @@ export class Player {
       alive: this._alive,
       maxBombs: this._maxBombs,
       bombRange: this._bombRange,
+      speed: this._speed,
     };
   }
 

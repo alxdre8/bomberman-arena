@@ -16,6 +16,7 @@ export const ServerEvent = {
   BombPlanted: 'bomb:planted',
   ExplosionOccurred: 'explosion:occurred',
   PlayerDead: 'player:dead',
+  PowerUpCollected: 'powerup:collected',
   GameEnd: 'game:end',
   Error: 'error',
 } as const;

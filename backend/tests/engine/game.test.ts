@@ -99,6 +99,7 @@ describe('Game', () => {
       alive: true,
       maxBombs: 1,
       bombRange: 1,
+      speed: 0,
     });
   });
 
