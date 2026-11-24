@@ -216,14 +216,6 @@ function setFilter(filter: string): void {
 
 // ---------- Écouteurs ----------
 export function initLobbies(): void {
-  const joinGameBtn = document.getElementById('join-game-btn');
-  if (!joinGameBtn) return;
-
-  joinGameBtn.addEventListener('click', () => {
-    showLobbies();
-    renderList();
-  });
-
   const backBtn = document.getElementById('back-to-menu-btn');
   backBtn?.addEventListener('click', () => {
     showMenu();
