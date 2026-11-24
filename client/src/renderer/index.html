@@ -19,15 +19,7 @@
     </div>
 
     <div class="menu-stage">
-      <h1 class="menu-title">
-        Bomberman<span class="bomb-emoji">💣</span>Arena
-      </h1>
-
-      <div class="vs-banner">
-        <span class="vs-pill vs-pill--left">1v1</span>
-        <span class="vs-text">VS</span>
-        <span class="vs-pill vs-pill--right">ARENA</span>
-      </div>
+      <img class="menu-logo" src="../images/bomberman_logo.png" alt="Bomberman Logo" />
 
       <nav class="menu-buttons">
         <button id="join-game-btn" class="menu-button menu-button-cyan">
@@ -40,29 +32,63 @@
           Créer une partie
           <span class="hotkey">N</span>
         </button>
-        <button id="settings-btn" class="menu-button">
-          <span class="menu-button-icon">⚙️</span>
-          Paramètres
-          <span class="hotkey">E</span>
-        </button>
-        <button id="credits-btn" class="menu-button">
-          <span class="menu-button-icon">📜</span>
-          Crédits
-          <span class="hotkey">C</span>
-        </button>
-        <button id="quit-game-btn" class="menu-button menu-button-danger">
-          <span class="menu-button-icon">🚪</span>
-          Quitter le jeu
-          <span class="hotkey">Q</span>
-        </button>
       </nav>
-
-      <div class="menu-footer">
-        <span class="arena-version">Bomberman Arena — <strong>v1.0.0</strong></span>
-      </div>
     </div>
 
     <div id="app"></div>
+
+    <div id="echap-menu" class="echap-menu" aria-hidden="true">
+      <div class="echap-backdrop"></div>
+      <div class="echap-panel" role="dialog" aria-modal="true" aria-labelledby="echap-title">
+        <button id="echap-close-btn" class="echap-close" aria-label="Fermer le menu ECHAP">
+          &times;
+        </button>
+        <h2 id="echap-title" class="echap-title">Menu ECHAP</h2>
+
+        <div class="echap-actions">
+          <button id="echap-continue-btn" class="echap-button echap-button-primary">
+            <span class="echap-button-icon">▶</span>
+            Continuer
+          </button>
+          <button id="echap-to-menu-btn" class="echap-button echap-button-primary">
+            <span class="echap-button-icon">◀</span>
+            Retour au menu principal
+          </button>
+          <button id="echap-settings-btn" class="echap-button">
+            <span class="echap-button-icon">⚙️</span>
+            Paramètres
+          </button>
+          <button id="echap-quit-btn" class="echap-button echap-button-danger">
+            <span class="echap-button-icon">🚪</span>
+            Quitter le jeu
+          </button>
+        </div>
+      </div>
+    </div>
+      </div>
+    </div>
+
+    <div id="lobbies-page" class="lobbies-page hidden">
+      <div class="lobbies-header">
+        <button id="back-to-menu-btn" class="lobbies-back-btn" aria-label="Retour au menu">
+          <span class="lobbies-back-icon">◀</span>
+          <span class="lobbies-back-text">Menu</span>
+        </button>
+        <span class="lobbies-status">🌐 <strong>Salon commun</strong></span>
+      </div>
+
+      <h1 class="lobbies-title">Salons</h1>
+
+      <div class="lobbies-toolbar">
+        <div class="lobbies-filters">
+          <button class="lobbies-filter active" data-filter="all">Tous</button>
+          <button class="lobbies-filter" data-filter="in-progress">En cours</button>
+          <button class="lobbies-filter" data-filter="waiting">En attente</button>
+        </div>
+      </div>
+
+      <div id="lobbies-list" class="lobbies-list"></div>
+    </div>
 
     <a
       id="itchio-link"

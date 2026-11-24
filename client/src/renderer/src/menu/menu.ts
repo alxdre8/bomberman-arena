@@ -3,23 +3,17 @@ declare const electronAPI: {
   quitApp: () => void;
 };
 
+import { initLobbies } from './lobbies';
+import { showLobbies, showGame, showMenu } from './pages';
+
 // Fonction pour rejoindre une partie
 function joinGame(): void {
-  console.log("Rejoindre une partie...");
-  alert("Fonctionnalité 'Rejoindre une partie' à implémenter.");
+  initLobbies();
 }
 
 // Fonction pour créer une partie
 async function createGame(): Promise<void> {
-  console.log("Créer une partie...");
-
-  // Masque le menu
-  const menuContainer = document.querySelector('.menu-container') as HTMLElement;
-  menuContainer.style.display = 'none';
-
-  // Masque le lien itch.io (réservé au menu principal)
-  const itchioLink = document.getElementById('itchio-link');
-  if (itchioLink) itchioLink.style.display = 'none';
+  showGame();
 
   // Charge le jeu PixiJS
   const { startGame } = await import('../main');
@@ -48,6 +42,41 @@ function closeCredits(): void {
   modal.setAttribute('aria-hidden', 'true');
 }
 
+// ---------- Menu ECHAP (accessible depuis n'importe quelle page) ----------
+let echapOpen = false;
+
+function openEchapMenu(): void {
+  const echap = document.getElementById('echap-menu');
+  if (!echap) return;
+  echap.classList.add('open');
+  echap.setAttribute('aria-hidden', 'false');
+  echapOpen = true;
+
+  const echapToMenuBtn = document.getElementById('echap-to-menu-btn');
+  const echapContinueBtn = document.getElementById('echap-continue-btn');
+  const echapSettingsBtn = document.getElementById('echap-settings-btn');
+  const echapQuitBtn = document.getElementById('echap-quit-btn');
+
+  // On est sur une sous-page (salon ou jeu) => "Continuer" visible, "Retour au menu" visible
+  const onSubPage =
+    document.getElementById('lobbies-page') ||
+    document.getElementById('app')?.classList.contains('block');
+
+  echapContinueBtn?.classList.toggle('hidden', !onSubPage);
+  echapToMenuBtn?.classList.toggle('hidden', !onSubPage);
+
+  if (echapSettingsBtn) echapSettingsBtn.textContent = 'Paramètres';
+  if (echapQuitBtn) echapQuitBtn.textContent = 'Quitter le jeu';
+}
+
+function closeEchapMenu(): void {
+  const echap = document.getElementById('echap-menu');
+  if (!echap) return;
+  echap.classList.remove('open');
+  echap.setAttribute('aria-hidden', 'true');
+  echapOpen = false;
+}
+
 // Fonction pour quitter le jeu
 function quitGame(): void {
   if (electronAPI) {
@@ -69,6 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const creditsCloseMainBtn = document.getElementById('credits-close-main-btn');
   const creditsBackdrop = creditsModal?.querySelector('.credits-modal-backdrop');
 
+  const echapModal = document.getElementById('echap-menu');
+  const echapCloseBtn = document.getElementById('echap-close-btn');
+  const echapBackdrop = echapModal?.querySelector('.echap-backdrop');
+  const echapContinueBtn = document.getElementById('echap-continue-btn');
+  const echapToMenuBtn = document.getElementById('echap-to-menu-btn');
+  const echapSettingsBtn = document.getElementById('echap-settings-btn');
+  const echapQuitBtn = document.getElementById('echap-quit-btn');
+
   joinGameBtn?.addEventListener('click', joinGame);
   createGameBtn?.addEventListener('click', createGame);
   settingsBtn?.addEventListener('click', openSettings);
@@ -78,6 +115,20 @@ document.addEventListener('DOMContentLoaded', () => {
   creditsCloseBtn?.addEventListener('click', closeCredits);
   creditsCloseMainBtn?.addEventListener('click', closeCredits);
   creditsBackdrop?.addEventListener('click', closeCredits);
+
+  // ---------- Écouteurs du menu ECHAP ----------
+  echapCloseBtn?.addEventListener('click', closeEchapMenu);
+  echapBackdrop?.addEventListener('click', closeEchapMenu);
+  echapContinueBtn?.addEventListener('click', () => {
+    if (document.getElementById('lobbies-page')) {
+      showLobbies();
+    } else {
+      showGame();
+    }
+  });
+  echapToMenuBtn?.addEventListener('click', showMenu);
+  echapSettingsBtn?.addEventListener('click', openSettings);
+  echapQuitBtn?.addEventListener('click', quitGame);
 
   const hotkeys: Record<string, () => void> = {
     r: joinGame,
@@ -91,7 +142,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const key = event.key.toLowerCase();
 
     if (key === 'escape') {
-      closeCredits();
+      if (echapOpen) {
+        closeEchapMenu();
+      } else if (document.getElementById('credits-modal')?.classList.contains('open')) {
+        closeCredits();
+      } else if (!document.getElementById('menu-stage')?.classList.contains('hidden')) {
+        openEchapMenu();
+      }
       return;
     }
 
