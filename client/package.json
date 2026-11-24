@@ -4,7 +4,7 @@
   "description": "Bomberman Arena - Client Electron + PixiJS",
   "main": "out/main/index.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "electron-vite dev",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -28,6 +28,7 @@
     "electron-vite": "^5.0.0",
     "eslint": "^10.13.0",
     "globals": "^17.13.0",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^7.3.6"
   },

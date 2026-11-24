@@ -26,7 +26,7 @@ function splitSpritesheet(baseTexture: Texture, frameCount: number): Texture[] {
   return frames;
 }
 
-async function main(): Promise<void> {
+export async function startGame(): Promise<void> {
   const socket = io("http://localhost:3000");
   let localPlayerId: string | null = null;
 
@@ -46,7 +46,7 @@ async function main(): Promise<void> {
   await app.init({
     width: window.innerWidth,
     height: window.innerHeight,
-    backgroundColor: 0x1a1a2e,
+    backgroundColor: 0x0b1129,
     antialias: true,
     resolution: window.devicePixelRatio || 1,
     autoDensity: true,
@@ -257,4 +257,4 @@ async function main(): Promise<void> {
   });
 }
 
-main().catch(console.error);
+

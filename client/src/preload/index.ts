@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   removeAllListeners: (channel: string) =>
     ipcRenderer.removeAllListeners(channel),
+  quitApp: () => ipcRenderer.send("quit-app"),
 });
