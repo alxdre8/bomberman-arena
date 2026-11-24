@@ -1,3 +1,4 @@
+import type { PowerUp } from '../engine/PowerUp.js';
 import type { Direction, GameStatus, PlayerId, PlayerState, Position } from '../engine/types.js';
 
 /**
@@ -35,6 +36,8 @@ export interface RoomJoinedPayload {
 export interface RoomPlayersPayload {
   lobbyId: string;
   playerNames: string[];
+  /** Noms des joueurs s'étant déclarés prêts (sous-ensemble de `playerNames`). */
+  readyPlayerNames: string[];
   minPlayers: number;
   maxPlayers: number;
 }
@@ -48,6 +51,18 @@ export interface GameStatePayload {
     tiles: string[][];
   };
   players: PlayerState[];
+  /** Bombes actives sur la grille. */
+  bombs: BombPlantedPayload[];
+  /** Bonus posés sur la grille (case `bonus` de `tiles`). */
+  powerUps: PowerUpOnGridPayload[];
+  /** Vainqueur une fois la partie terminée (null : match nul ou partie en cours). */
+  winnerId: PlayerId | null;
+}
+
+/** Bonus présent sur une case. */
+export interface PowerUpOnGridPayload {
+  position: Position;
+  kind: PowerUp;
 }
 
 /** Nouvelle position validée d'un joueur. */
@@ -67,8 +82,18 @@ export interface BombPlantedPayload {
 
 /** Explosion produite (cases impactées). */
 export interface ExplosionOccurredPayload {
+  bombId: string;
   origin: Position;
   affectedCells: Position[];
+}
+
+/** Un joueur a ramassé un bonus. */
+export interface PowerUpCollectedPayload {
+  playerId: PlayerId;
+  kind: PowerUp;
+  position: Position;
+  /** État du joueur après application du bonus. */
+  player: PlayerState;
 }
 
 /** Un joueur vient de mourir. */
@@ -115,6 +140,7 @@ export interface ServerToClientEvents {
   'bomb:planted': (payload: BombPlantedPayload) => void;
   'explosion:occurred': (payload: ExplosionOccurredPayload) => void;
   'player:dead': (payload: PlayerDeadPayload) => void;
+  'powerup:collected': (payload: PowerUpCollectedPayload) => void;
   'game:end': (payload: GameEndPayload) => void;
   error: (payload: ErrorPayload) => void;
 }

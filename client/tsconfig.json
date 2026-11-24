@@ -5,6 +5,7 @@
     "moduleResolution": "bundler",
     "strict": true,
     "sourceMap": true,
+    "rootDir": "./src",
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

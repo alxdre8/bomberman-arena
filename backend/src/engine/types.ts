@@ -31,6 +31,8 @@ export interface PlayerState {
   alive: boolean;
   maxBombs: number;
   bombRange: number;
+  /** Nombre de bonus de vitesse ramassés (réduit le délai entre deux pas). */
+  speed: number;
 }
 
 /** Cycle de vie d'une partie. */

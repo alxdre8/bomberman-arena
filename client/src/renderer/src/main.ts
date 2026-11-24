@@ -1,19 +1,49 @@
-import { Application, Graphics, Text, TextStyle } from 'pixi.js';
+import {
+  Application,
+  Assets,
+  Graphics,
+  Rectangle,
+  Sprite,
+  Text,
+  TextStyle,
+  Texture,
+} from "pixi.js";
+import { io } from "socket.io-client";
+import soldierIdlePath from "./assets/sprites/Soldier_Idle.png";
+import soldierWalkPath from "./assets/sprites/Soldier_Walk.png";
 
-let gameApp: Application | null = null;
+// ── Spritesheet helpers ─────────────────────────────────────────────────────
+
+const FRAME_SIZE = 100; // chaque frame = 100×100 px
+
+/** Découpe un spritesheet horizontal en frames de 100×100. */
+function splitSpritesheet(baseTexture: Texture, frameCount: number): Texture[] {
+  const frames: Texture[] = [];
+  for (let i = 0; i < frameCount; i++) {
+    const frame = new Rectangle(i * FRAME_SIZE, 0, FRAME_SIZE, FRAME_SIZE);
+    frames.push(new Texture({ source: baseTexture.source, frame }));
+  }
+  return frames;
+}
 
 export async function startGame(): Promise<void> {
-  const appContainer = document.getElementById('app');
-  if (!appContainer) {
-    console.error("Le conteneur #app est introuvable !");
-    return;
-  }
+  const socket = io("http://localhost:3000");
+  let localPlayerId: string | null = null;
 
-  appContainer.style.display = 'block';
+  socket.on("connect_error", (error) => {
+    console.error("Connexion au serveur de jeu impossible:", error.message);
+  });
+  socket.on("room:joined", ({ playerId }) => {
+    localPlayerId = playerId;
+    socket.emit("player:ready");
+  });
+  socket.emit("room:join", { playerName: "Player" });
 
-  gameApp = new Application();
+  // ── PixiJS ──────────────────────────────────────────────────────────────
 
-  await gameApp.init({
+  const app = new Application();
+
+  await app.init({
     width: window.innerWidth,
     height: window.innerHeight,
     backgroundColor: 0x0b1129,
@@ -22,126 +52,209 @@ export async function startGame(): Promise<void> {
     autoDensity: true,
   });
 
-  appContainer.appendChild(gameApp.canvas);
+  document.getElementById("app")!.appendChild(app.canvas);
 
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  const gridSize = 15;
-  const cellSize = Math.min(w, h) / (gridSize + 2);
-  const offsetX = (w - gridSize * cellSize) / 2;
-  const offsetY = (h - gridSize * cellSize) / 2;
+  // ── Chargement des spritesheets ─────────────────────────────────────────
 
-  // Terrain
-  const ground = new Graphics();
-  ground
-    .rect(0, 0, w, h)
-    .fill(0x0a0f26);
-  ground.stroke(0x2a3b8f);
-  ground.lineStyle(4, 0x2a3b8f, 0.25);
-  gameApp.stage.addChild(ground);
+  let idleFrames: Texture[] = [];
+  let walkFrames: Texture[] = [];
+  let useSpritesheet = false;
 
-  // Grille de lignes néon
-  const grid = new Graphics();
-  for (let i = 0; i <= gridSize; i++) {
-    const pos = offsetX + i * cellSize;
-    grid.moveTo(pos, offsetY);
-    grid.lineTo(pos, offsetY + gridSize * cellSize);
-    grid.moveTo(offsetX, pos);
-    grid.lineTo(offsetX + gridSize * cellSize, pos);
+  try {
+    const idleTexture = (await Assets.load(soldierIdlePath)) as Texture;
+    const walkTexture = (await Assets.load(soldierWalkPath)) as Texture;
+
+    idleFrames = splitSpritesheet(idleTexture, 6);
+    walkFrames = splitSpritesheet(walkTexture, 8);
+    useSpritesheet = idleFrames.length > 0 && walkFrames.length > 0;
+  } catch (err) {
+    console.warn("Impossible de charger les sprites, fallback cercle:", err);
   }
-  grid.stroke({ color: 0x1e2b6e, width: 2, alpha: 0.5 });
-  gameApp.stage.addChild(grid);
 
-  // Cases de bombes + tuyaux
+  // ── Grille ──────────────────────────────────────────────────────────────
+
+  const gridSize = 15;
+  const cellSize =
+    Math.min(window.innerWidth, window.innerHeight) / (gridSize + 2);
+
+  const offsetX = (window.innerWidth - gridSize * cellSize) / 2;
+  const offsetY = (window.innerHeight - gridSize * cellSize) / 2;
+
+  const grid = new Graphics();
+
+  const walls: boolean[][] = [];
+
   for (let row = 0; row < gridSize; row++) {
+    walls[row] = [];
+
     for (let col = 0; col < gridSize; col++) {
       const x = offsetX + col * cellSize;
       const y = offsetY + row * cellSize;
+
       const isWall = row % 2 === 1 && col % 2 === 1;
-      const isOpen = (row + col) % 3 === 0;
 
-      if (isWall) {
-        const brick = new Graphics();
-        brick
-          .rect(x + 2, y + 2, cellSize - 4, cellSize - 4)
-          .fill(0x1b2450);
-        brick.stroke(0x3a4d9e);
-        brick.lineStyle(2, 0x3a4d9e, 0.85);
-        gameApp.stage.addChild(brick);
+      walls[row][col] = isWall;
 
-        // Tuyau décoratif sur certains murs
-        if (isOpen && (row * 7 + col * 5) % 4 === 0) {
-          const pipe = new Graphics();
-          pipe
-            .roundRect(x + 6, y + 6, cellSize - 12, cellSize - 12, 8)
-            .fill(0x08f2d4);
-          pipe.stroke(0x16f2dc);
-          pipe.lineStyle(2, 0x16f2dc, 0.6);
-          gameApp.stage.addChild(pipe);
+      grid
+        .rect(x, y, cellSize - 1, cellSize - 1)
+        .fill(isWall ? 0x16213e : 0x0f3460);
+    }
+  }
+
+  app.stage.addChild(grid);
+
+  // ── Joueur (sprite animé ou fallback cercle) ────────────────────────────
+
+  let playerRow = 0;
+  let playerCol = 0;
+
+  // État d'animation
+  let currentFrames = idleFrames;
+  let currentFrameIndex = 0;
+  const animSpeed = 0.12; // frames par tick (≈ 7 fps à 60 fps)
+  let animAccumulator = 0;
+  let isMoving = false;
+
+  // Création du personnage
+  let player: Sprite | Graphics;
+  const spriteScale = (cellSize * 4.7) / FRAME_SIZE;
+
+  if (useSpritesheet) {
+    const s = new Sprite(idleFrames[0]);
+    s.anchor.set(0.5, 0.5);
+    s.scale.set(spriteScale);
+    player = s;
+  } else {
+    const g = new Graphics();
+    g.circle(0, 0, cellSize * 0.35).fill(0xe94560);
+    player = g;
+  }
+
+  // Position initiale
+  player.x = offsetX + playerCol * cellSize + cellSize / 2;
+  player.y = offsetY + playerRow * cellSize + cellSize / 2;
+
+  app.stage.addChild(player);
+
+  // ── Animation loop ──────────────────────────────────────────────────────
+
+  let idleTimer = 0;
+
+  if (useSpritesheet) {
+    app.ticker.add(() => {
+      animAccumulator += 1;
+
+      // Quand on bouge : parcourir les frames walk rapidement
+      if (isMoving) {
+        if (animAccumulator >= 1 / animSpeed) {
+          animAccumulator = 0;
+          currentFrameIndex = (currentFrameIndex + 1) % currentFrames.length;
+          (player as Sprite).texture = currentFrames[currentFrameIndex];
+        }
+      } else {
+        // Idle : animation plus lente
+        idleTimer += 1;
+        if (idleTimer >= 10) {
+          idleTimer = 0;
+          currentFrameIndex = (currentFrameIndex + 1) % currentFrames.length;
+          (player as Sprite).texture = currentFrames[currentFrameIndex];
         }
       }
-    }
-  }
-
-  // Bombes décoratives flottantes
-  const bombStyle = new TextStyle({
-    fontFamily: 'Arial',
-    fontSize: 30,
-    fontWeight: 'bold',
-    fill: '#ff2e63',
-    stroke: { color: '#ffffff', width: 3 },
-    dropShadow: {
-      color: '#ff2e63',
-      blur: 16,
-      distance: 0,
-    },
-  });
-
-  for (let i = 0; i < 6; i++) {
-    const bomb = new Text({
-      text: '💣',
-      style: bombStyle,
-      x: Math.random() * (w - 120) + 60,
-      y: Math.random() * (h - 120) + 60,
     });
-    gameApp.stage.addChild(bomb);
   }
 
-  // Effet de scintillement au centre
-  const flare = new Graphics();
-  flare.alpha = 0.5;
-  flare.beginFill(0xffe600, 0.5);
-  flare.drawCircle(w / 2, h / 2, Math.min(w, h) * 0.25);
-  flare.endFill();
-  gameApp.stage.addChild(flare);
+  // Retour à idle après un court délai sans mouvement
+  let moveTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  // Titre
-  const titleStyle = new TextStyle({
-    fontFamily: 'Impact, Arial Black',
-    fontSize: 40,
-    fontWeight: 'bold',
-    fill: '#ff2e63',
-    stroke: { color: '#ffffff', width: 6 },
+  function setMoving(): void {
+    if (!isMoving) {
+      isMoving = true;
+      currentFrames = walkFrames;
+      currentFrameIndex = 0;
+      animAccumulator = 0;
+    }
+    if (moveTimeout) clearTimeout(moveTimeout);
+    moveTimeout = setTimeout(() => {
+      isMoving = false;
+      currentFrames = idleFrames;
+      currentFrameIndex = 0;
+      animAccumulator = 0;
+    }, 200);
+  }
+
+  socket.on("game:position", ({ playerId, position }) => {
+    if (playerId !== localPlayerId) {
+      return;
+    }
+
+    const previousCol = playerCol;
+    playerRow = position.y;
+    playerCol = position.x;
+
+    if (useSpritesheet && playerCol !== previousCol) {
+      player.scale.x =
+        playerCol < previousCol
+          ? -Math.abs(spriteScale)
+          : Math.abs(spriteScale);
+    }
+
+    player.x = offsetX + playerCol * cellSize + cellSize / 2;
+    player.y = offsetY + playerRow * cellSize + cellSize / 2;
+    setMoving();
+  });
+
+  // Écoute du clavier
+  window.addEventListener("keydown", (event) => {
+    switch (event.key.toLowerCase()) {
+      case "w":
+      case "z":
+        socket.emit("player:move", { direction: "up" });
+        break;
+
+      case "s":
+        socket.emit("player:move", { direction: "down" });
+        break;
+
+      case "a":
+      case "q":
+        socket.emit("player:move", { direction: "left" });
+        break;
+
+      case "d":
+        socket.emit("player:move", { direction: "right" });
+        break;
+    }
+  });
+
+  // ── Titre ───────────────────────────────────────────────────────────────
+
+  const style = new TextStyle({
+    fontFamily: "Arial",
+    fontSize: 28,
+    fontWeight: "bold",
+    fill: "#e94560",
     dropShadow: {
-      color: '#ff2e63',
-      blur: 14,
+      color: "#e94560",
+      blur: 10,
       distance: 0,
     },
   });
 
-  const title = new Text({ text: 'Bomberman Arena', style: titleStyle });
-  title.x = w / 2 - title.width / 2;
-  title.y = 30;
-  gameApp.stage.addChild(title);
-
-  // Redimensionnement
-  window.addEventListener('resize', () => {
-    if (gameApp) {
-      gameApp.renderer.resize(window.innerWidth, window.innerHeight);
-    }
+  const title = new Text({
+    text: "💣 Bomberman Arena",
+    style,
   });
 
-  if (gameApp) {
-    gameApp.renderer.resize(window.innerWidth, window.innerHeight);
-  }
+  title.x = window.innerWidth / 2 - title.width / 2;
+  title.y = 20;
+
+  app.stage.addChild(title);
+
+  // ── Redimensionnement ───────────────────────────────────────────────────
+
+  window.addEventListener("resize", () => {
+    app.renderer.resize(window.innerWidth, window.innerHeight);
+  });
 }
+
+

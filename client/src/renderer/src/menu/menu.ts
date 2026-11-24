@@ -3,6 +3,7 @@ declare const electronAPI: {
   quitApp: () => void;
 };
 
+import "../../styles.css";
 import { initLobbies } from "./lobbies";
 import { showLobbies, showGame, showMenu } from "./pages";
 

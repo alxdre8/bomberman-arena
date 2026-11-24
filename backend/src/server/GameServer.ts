@@ -3,7 +3,7 @@ import { Server } from 'socket.io';
 import type { AppConfig } from '../config.js';
 import type { ClientToServerEvents, ServerToClientEvents } from '../protocol/types.js';
 import { RoomManager } from '../rooms/RoomManager.js';
-import { GameController } from './GameController.js';
+import { GameController, type GameControllerOptions } from './GameController.js';
 
 /**
  * Serveur de jeu : HTTP + Socket.IO.
@@ -19,7 +19,10 @@ export class GameServer {
   private readonly controller: GameController;
   private connectionCount = 0;
 
-  constructor(private readonly config: AppConfig) {
+  constructor(
+    private readonly config: AppConfig,
+    controllerOptions: GameControllerOptions = {},
+  ) {
     this.httpServer = createServer((_req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Bomberman Arena - Serveur WebSocket');
@@ -30,7 +33,7 @@ export class GameServer {
     });
 
     this.rooms = new RoomManager();
-    this.controller = new GameController(this.rooms);
+    this.controller = new GameController(this.rooms, controllerOptions);
 
     this.io.on('connection', (socket) => {
       this.connectionCount += 1;
@@ -60,6 +63,11 @@ export class GameServer {
     return this.rooms;
   }
 
+  /** Contrôleur de jeu (utile pour inspecter les boucles dans les tests). */
+  get gameController(): GameController {
+    return this.controller;
+  }
+
   /** Démarre l'écoute HTTP + WebSocket. */
   async start(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
@@ -73,6 +81,7 @@ export class GameServer {
 
   /** Ferme le serveur Socket.IO (et le serveur HTTP sous-jacent). */
   async stop(): Promise<void> {
+    this.controller.dispose();
     await new Promise<void>((resolve) => {
       this.io.close(() => resolve());
     });
